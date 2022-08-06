@@ -1,0 +1,53 @@
+{
+    "settings":
+        {
+            "watched_folder": "C:/Downloads",
+            "rename": true,
+            "ask_to_delete": true,
+            "delete_empty_folders": true,
+            "progress_bar": true,
+            "ascii_bar": true
+        },
+        "file_type_groups":
+            {
+                "audio": [".mp3", ".wav", ".flac"],
+                "image": [".jpg", ".png", ".gif", "tiff", "tif", "BMP"],
+                "video": [".mp4", ".wave", ".mkv", ".mpeg", ".mpg", "mpeg4", ".avi", ".mpeg4", ".avi", ".wmv", ".mov"],
+                "text": [".txt", ".doc", ".docx", ".pdf", ".odt"],
+                "spreadsheet": [".xls", ".xlsx", ".xlsm", ".ods"],
+                "compressed": [".deb", ".pkg", ".rar", ".rpm", ".tar", ".gz", ".z", ".zip"],
+                "executable": [".exe", ".bat", ".apk", ".bin", ".com", ".jar", ".msi", ".wsf"],
+                "presentation": [".key", ".odp", ".pps", ".ppt", ".pptx"],
+                "programming": [".c", ".class", ".cpp", ".cs", ".h", ".java", ".js",".php", ".py", ".sh", ".swift", ".vb"]
+            },
+        "file_group_dest":
+            {
+                "audio":"C:/Downloads/Audio Files",
+                "image":"C:/Downloads/Images",
+                "video":"C:/Downloads/Videos",
+                "text":"C:/Downloads/Documents",
+                "spreadsheet":"C:/Downloads/Spreadsheets",
+                "compressed":"C:/Downloads/Compressed Files",
+                "executable":"C:/Downloads/Executable",
+                "presentation":"C:/Downloads/Presentations",
+                "programming":"C:/Downloads/Programming"
+            },
+        "keywords_dest":
+            {
+                "wallpaper": [[".jpg", ".png"], "C:/Downloads/Wallpapers"],
+                "python": [[".py", ".pyw"], "C:/Downloads/Coding/Python"]
+            },
+        "special_case_dest":
+            {
+                ".exe":"C:/Downloads/Installers",
+                ".mkv":"C:/Downloads/HD Videos"
+            },
+        "delete_def":
+            [
+                ".exe", ".test", ".zip", ".rar", ".7z"
+            ],
+        "file_rename":
+            {
+                "testing123":"test_complete"
+            }
+}

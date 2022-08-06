@@ -1,0 +1,7 @@
+.vscode
+.idea
+__pycache__
+config.json
+Auto Folder Cleaner.lnk
+*.lnk
+testing.py
