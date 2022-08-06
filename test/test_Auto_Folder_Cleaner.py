@@ -188,7 +188,7 @@ class DeleteEmptyFolders(unittest.TestCase):
 
     def create_empty_folders(self, dir, folders):
         """
-        ph
+        Creates empty and non empty folders for testing.
         """
         # makes empty folders
         for folder in folders:
