@@ -18,7 +18,7 @@
                 "compressed": [".deb", ".pkg", ".rar", ".rpm", ".tar", ".gz", ".z", ".zip"],
                 "executable": [".exe", ".bat", ".apk", ".bin", ".com", ".jar", ".msi", ".wsf"],
                 "presentation": [".key", ".odp", ".pps", ".ppt", ".pptx"],
-                "programming": [".c", ".class", ".cpp", ".cs", ".h", ".java", ".js",".php", ".py", ".sh", ".swift", ".vb"]
+                "programming": [".c", ".class", ".cpp", ".cs", ".h", ".java", ".rs", ".js",".php", ".py", ".sh", ".swift", ".vb"]
             },
         "file_group_dest":
             {
