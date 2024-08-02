@@ -1,4 +1,4 @@
-from Auto_Folder_Cleaner import Cleaner
+from main import Cleaner
 import unittest, os, shutil
 
 

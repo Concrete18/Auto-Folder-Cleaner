@@ -1,63 +1,34 @@
-import winsound, shutil, math, json, os, re
+import winsound, shutil, math, os, re
 from tqdm import tqdm
-from pathlib import Path
+
+from rich.progress import Progress, track
+from rich.console import Console
+from rich.theme import Theme
+from rich.table import Table
+
+from utils.config import Config
+from utils.utils import Utils
 
 
-class Cleaner:
+class Cleaner(Utils):
 
-    print(title := "Auto Folder Cleaner")
+    config = Config()
 
-    def __init__(self, config=None) -> None:
-        if config:
-            self.config = Path(config)
-        else:
-            default_config_name = "config.json"
-            self.config = Path(default_config_name)
-            if not self.config.exists():
-                template = Path("template_config.json")
-                shutil.copyfile(template, default_config_name)
+    # rich console
+    custom_theme = Theme(
+        {
+            "primary": "bold deep_sky_blue1",
+            "secondary": "bold pale_turquoise1",
+            # error
+            "info": "dim cyan",
+            "warning": "bold magenta",
+            "danger": "bold red",
+        }
+    )
+    console = Console(theme=custom_theme)
 
-    def get_settings(self):
-        """
-        Initializes settings from config.
-        """
-        with open(self.config) as json_file:
-            data = json.load(json_file)
-        # setting setup
-        self.settings = data["settings"]
-
-        # default watcher folder
-        self.watched_folder = self.settings["watched_folder"]
-
-        # Enables asking to delete files that match a filename from delete_def.
-        self.ask_to_delete = self.settings["ask_to_delete"]
-
-        # Toggles renaming
-        self.rename = self.settings["rename"]
-
-        # Enables progress bar.
-        self.progress_bar = self.settings["progress_bar"]
-
-        # True sets progress bar to use ascii in case of unicode issues.
-        self.ascii = self.settings["ascii_bar"]
-
-        # Sets file types into groups.
-        self.file_type_groups = data["file_type_groups"]
-
-        # Sets destination based on file group.
-        self.file_group_dest = data["file_group_dest"]
-
-        # Checks for keywords in file names.
-        self.keywords_dest = data["keywords_dest"]
-
-        # Lists special cases for file type destinations.
-        self.special_case_dest = data["special_case_dest"]
-
-        # Lists files to possible delete instead of moving.
-        self.delete_def = data["delete_def"]
-
-        # loads the rename presets
-        self.file_rename_presets = data["file_rename"]
+    def __init__(self) -> None:
+        pass
 
     def destination_check(self):
         """
@@ -65,12 +36,12 @@ class Cleaner:
         the last folder in each destination exists. If the last folder is
         all that is missing, it will be created during the move process.
         """
-        print(f"\nMaking sure file destinations are valid.")
+        print(f"\nMaking sure file destinations are valid")
         missing_dests = []
         dir_list = [
-            self.file_group_dest,
-            self.special_case_dest,
-            self.keywords_dest,
+            self.config.file_group_dest,
+            self.config.special_case_dest,
+            self.config.keywords_dest,
         ]
         for dirs in dir_list:
             for dest in dirs.values():
@@ -83,6 +54,15 @@ class Cleaner:
                     if dest not in missing_dests:
                         print(dest)
                         missing_dests.append(dest)
+        if len(missing_dests) > 0:
+            msg = "\n> The below base directories are missing.\n"
+            self.console.print(msg, style="secondary")
+            for dest in missing_dests:
+                print(dest)
+            if input("\nDo you want to continue?").lower() in ["no", "n"]:
+                exit()
+        else:
+            self.console.print("> All destinations are valid.", style="secondary")
         return missing_dests
 
     @staticmethod
@@ -107,15 +87,15 @@ class Cleaner:
         file_type = self.get_file_type(file_name)
         destination = "skip"
         # for loop that checks for file group matches
-        for file_group, file_type_list in self.file_type_groups.items():
+        for file_group, file_type_list in self.config.file_type_groups.items():
             if file_type in file_type_list:
                 # sets destination based on file group
-                destination = self.file_group_dest[file_group]
-                if file_type in self.special_case_dest:
+                destination = self.config.file_group_dest[file_group]
+                if file_type in self.config.special_case_dest:
                     # sets destination based on special case
-                    destination = self.special_case_dest[file_type]
+                    destination = self.config.special_case_dest[file_type]
                 # for loop that checks for keyword matches
-                for (keyword, keyword_data) in self.keywords_dest.items():
+                for keyword, keyword_data in self.config.keywords_dest.items():
                     # checks for match with upper case removed
                     if keyword.lower() in file_name.lower():
                         if file_type in keyword_data[0]:
@@ -130,33 +110,19 @@ class Cleaner:
         # end destination for file entered as file argument
         return destination
 
-    @staticmethod
-    def convert_size(bytes):
-        """
-        Converts size given in `bytes` to best fitting unit of measure.
-        """
-        size_name = ("B", "KB", "MB", "GB", "TB")
-        try:
-            i = int(math.floor(math.log(bytes, 1024)))
-            p = math.pow(1024, i)
-            s = round(bytes / p, 2)
-            return f"{s} {size_name[i]}"
-        except ValueError:
-            return "0 bits"
-
     def setup_queue(self):
         """
         Sets up queue of files to be moved later.
         """
-        print(f"\nChecking for new files in {self.watched_folder}")
-        watched_files = os.scandir(self.watched_folder)
+        print(f"\nChecking for new files in {self.config.watched_folder}")
+        watched_files = os.scandir(self.config.watched_folder)
         self.move_queue = []
-        self.queue_length = 0
         self.queue_size = 0
+        queue_length = 0
         large_files = 0
         for file in watched_files:
             file_type = self.get_file_type(file.name)
-            if file_type in self.delete_def and self.ask_to_delete:
+            if file_type in self.config.delete_def and self.config.ask_to_delete:
                 response = input(f"\nDo you want to delete {file.name}?\n")
                 if response.lower() in ["yes", "y", "yeah"]:
                     os.remove(file.path)
@@ -174,34 +140,33 @@ class Cleaner:
                     if file_size > 1e9:
                         large_files += 1
                     self.move_queue.append(dict)
-                    self.queue_length += 1
+                    queue_length += 1
                     self.queue_size += file_size
         self.move_queue = sorted(self.move_queue, key=lambda i: i["file_size"])
         if len(self.move_queue) == 0:
-            print(f"> No new files found.")
-            self.delete_empty_folders(self.watched_folder)
+            msg = f"> No new files found."
+            self.console.print(msg, style="secondary")
+            self.delete_empty_folders(self.config.watched_folder)
             input("\nPress Enter to close\n")
             exit()
-        elif self.queue_length == 1:
+        elif queue_length == 1:
             is_files = "file"
         else:
             is_files = "files"
         converted_size = self.convert_size(self.queue_size)
-        print(
-            f"> {self.queue_length} new {is_files} found totaling to {converted_size}."
-        )
+        msg = f"> {queue_length} new {is_files} found totaling to {converted_size}."
+        self.console.print(msg, style="secondary")
         if large_files > 0:
-            print(
-                f"> {large_files} large files need to transfer so give it time to prevent corruption."
-            )
+            msg = f"> {large_files} large files need to transfer so give it time to prevent corruption."
+            self.console.print(msg, style="secondary")
         return self.move_queue
 
-    def file_rename(self, destination, target):
+    def file_rename(self, destination, target) -> str:
         """
         Runs through file_rename_presets and replaces the set strings with the new strings and then returns it.
         """
         file_name = os.path.basename(target)
-        for string, replacement in self.file_rename_presets.items():
+        for string, replacement in self.config.file_rename_presets.items():
             pattern = re.compile(re.escape(string), re.IGNORECASE)
             file_name = pattern.sub(replacement, file_name)
             new_path = os.path.join(destination, file_name)
@@ -209,7 +174,7 @@ class Cleaner:
                 return os.path.join(destination, target)
         return new_path
 
-    def file_move(self, target, destination):
+    def file_move(self, target: str, destination: str) -> None:
         """
         Moves Target file to Destination after making the destination directory if it does not exist.
         It will also leave the file where it is if it already exists at the destination.
@@ -222,22 +187,22 @@ class Cleaner:
         """
         if os.path.isdir(destination) is False:  # checks if destination directory exist
             os.mkdir(destination)  # makes directory if it does not exist
-        if self.rename:
+        if self.config.rename:
             destination = self.file_rename(destination, target)
         shutil.move(target, destination)
 
-    def move_file_queue(self):
+    def move_file_queue(self) -> None:
         """
         Goes through the list of dictionarys in the move_queue to send all files to their correct destinations.
         It will employ a progress bar if enabled in the config.
         """
         try:
-            if self.progress_bar:
+            if self.config.progress_bar:
                 # uses progress bar
                 # TODO set to use tqdm.concurrent
                 with tqdm(
                     total=self.queue_size,
-                    ascii=self.ascii,
+                    ascii=self.config.ascii,
                     unit="byte",
                     unit_scale=1,
                     dynamic_ncols=1,
@@ -266,8 +231,7 @@ class Cleaner:
                 "Please disable progress bar in config or install the module via Pip."
             )
 
-    @staticmethod
-    def delete_empty_folders(directory):
+    def delete_empty_folders(self, directory) -> None:
         """
         Deletes empty folders in the watched_folder entered as an argument.
         """
@@ -288,38 +252,34 @@ class Cleaner:
                     delete_total += 1
         # prints info if empty folders were deleted
         if delete_total == 1:
-            print(f"> Deleted 1 empty folder.")
+            msg = "> Deleted 1 empty folder."
+            self.console.print(msg, style="secondary")
         elif delete_total > 1:
-            print(f"> Deleted {delete_total} empty folders.")
+            msg = f"> Deleted {delete_total} empty folders."
+            self.console.print(msg, style="secondary")
         else:
-            print(f"> No empty folders were found.")
+            msg = f"> No empty folders were found."
+            self.console.print(msg, style="secondary")
 
-    def completion_sound(self):
+    def completion_sound(self) -> None:
         """
         Plays a completion sound.
         """
+        # TODO delete or use
         winsound.PlaySound("Exclamation", winsound.SND_ALIAS)
 
     def run(self):
         """
         Runs main script process.
         """
-        self.get_settings()
-        # checks for missing destinations
-        missing_dests = self.destination_check()
-        if len(missing_dests) > 0:
-            print("> The below base directories are missing.\n")
-            print(missing_dests)
-            if input("\nDo you want to continue?").lower() in ["no", "n"]:
-                exit()
-        else:
-            print("> All destinations are valid.")
-        # sets up a queue for what needs to be moved
+        self.console.print("Auto Folder Cleaner", style="primary")
+        self.config.setup()
+        self.destination_check()
         self.setup_queue()
         print("\nStarting Folder Clean | Use Ctrl C if you need to cancel")
         self.move_file_queue()
-        if self.settings["delete_empty_folders"]:
-            self.delete_empty_folders(self.watched_folder)
+        if self.config.settings["delete_empty_folders"]:
+            self.delete_empty_folders(self.config.watched_folder)
         print("\nFolder Clean Complete")
         winsound.PlaySound("Exclamation", winsound.SND_ALIAS)
         if len(self.move_queue) > 5:
@@ -336,4 +296,5 @@ class Cleaner:
 
 
 if __name__ == "__main__":
-    Cleaner().run()
+    App = Cleaner()
+    App.run()
